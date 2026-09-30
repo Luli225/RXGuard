@@ -2,12 +2,15 @@
   "name": "rxguard-fullstack",
   "version": "1.0.0",
   "description": "RxGuard - Fullstack MERN Clinical Verification & Dispensing Web App (ES 7084:2024 / EFDA Compliant)",
+  "main": "server/src/server.js",
   "scripts": {
+    "install:all": "npm install --prefix server && npm install --prefix client",
+    "postinstall": "npm install --prefix server && npm install --prefix client",
+    "build": "npm run build --prefix client",
     "start": "node server/src/server.js",
     "server": "node --watch server/src/server.js",
     "client": "npm run dev --prefix client",
-    "seed": "node server/src/seed/seedRunner.js",
-    "build": "npm run build --prefix client"
+    "seed": "node server/src/seed/seedRunner.js"
   },
   "keywords": [
     "rxguard",
