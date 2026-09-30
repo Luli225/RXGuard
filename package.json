@@ -1,0 +1,24 @@
+{
+  "name": "rxguard-fullstack",
+  "version": "1.0.0",
+  "description": "RxGuard - Fullstack MERN Clinical Verification & Dispensing Web App (ES 7084:2024 / EFDA Compliant)",
+  "scripts": {
+    "start": "node server/src/server.js",
+    "server": "node --watch server/src/server.js",
+    "client": "npm run dev --prefix client",
+    "seed": "node server/src/seed/seedRunner.js",
+    "build": "npm run build --prefix client"
+  },
+  "keywords": [
+    "rxguard",
+    "mern",
+    "efda",
+    "es-7084-2024",
+    "pharmacy",
+    "clinical-verification",
+    "docker",
+    "postman"
+  ],
+  "author": "Group 2 (Alae Bakil et al.)",
+  "license": "ISC"
+}

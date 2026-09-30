@@ -1,0 +1,633 @@
+{
+  "info": {
+    "name": "RxGuard - Clinical Verification & Dispensing API",
+    "_postman_id": "rxguard-api-collection-v1",
+    "description": "Postman API Collection for RxGuard (HiLCoE SE332 Requirements Specification Document)\nEthiopian Pharmacy Standard ES 7084:2024 & EFDA Good Dispensing Practice Compliant.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. System & Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "health"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('System is healthy', function () { var json = pm.response.json(); pm.expect(json.status).to.eql('healthy'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Database Reset & Seed",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/seed-reset",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "seed-reset"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Reset successful', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Authentication & Security (SQR1, SQR6, FR15)",
+      "item": [
+        {
+          "name": "Login - Pharmacist (Sitra Temam)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"sitra_pharmacist\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Login successful', function () { pm.response.to.have.status(200); });",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.token) {",
+                  "    pm.environment.set('token', jsonData.token);",
+                  "    pm.environment.set('pin', '1234');",
+                  "    console.log('Saved auth token to environment');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login - Pharmacy Technician (Abebe Kebede)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"abebe_tech\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get Current Authenticated User",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "me"]
+            }
+          }
+        },
+        {
+          "name": "Verify Credential PIN (Clinical Override)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pin\": \"{{pin}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/verify-pin",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "verify-pin"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Patients & Demographics (DEF-05, Section 4.6)",
+      "item": [
+        {
+          "name": "Get All Patients (Full Clinical View)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/patients",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "patients"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.length > 0) {",
+                  "    pm.environment.set('samplePatientId', jsonData.data[0]._id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Patients with PHI Masking (Counter Screen)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/patients?mask=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "patients"],
+              "query": [{ "key": "mask", "value": "true" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Masked demographic data returned', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.data[0].contactPhone).to.include('****');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Patient (Pediatric Weight Validation - DEF-05)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": \"PAT-PED-TEST\",\n  \"fullName\": \"Baby Dawit\",\n  \"age\": 3,\n  \"sex\": \"Male\",\n  \"contactPhone\": \"+251 91 199 0011\",\n  \"allergies\": [],\n  \"chronicConditions\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/patients",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "patients"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Enforces mandatory weight for child under 12 (DEF-05)', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Prescriptions & Clinical Intake (UC01, UC02)",
+      "item": [
+        {
+          "name": "Get Prescriptions",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/prescriptions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "prescriptions"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.length > 0) {",
+                  "    pm.environment.set('samplePrescriptionId', jsonData.data[0]._id);",
+                  "    var flagged = jsonData.data.find(d => d.status === 'FLAGGED_HIGH_RISK' || d.status === 'UNDER_CLINICAL_REVIEW');",
+                  "    if (flagged) {",
+                  "        pm.environment.set('samplePrescriptionId', flagged._id);",
+                  "        if (flagged.safetyAlerts && flagged.safetyAlerts.length > 0) {",
+                  "            pm.environment.set('sampleAlertId', flagged.safetyAlerts[0]._id || flagged.safetyAlerts[0]);",
+                  "        }",
+                  "    }",
+                  "    if (jsonData.data[0].items && jsonData.data[0].items.length > 0) {",
+                  "        pm.environment.set('sampleItemId', jsonData.data[0].items[0].itemId);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Intake New Prescription - UC02 Scenario 1 Nominal (Amoxicillin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": \"{{samplePatientId}}\",\n  \"prescriptionType\": \"Acute\",\n  \"dateIssued\": \"2026-09-26T00:00:00.000Z\",\n  \"prescriber\": {\n    \"fullName\": \"Dr. Senait Bekele\",\n    \"licenseNumber\": \"ETH-MD-10924\",\n    \"facilityClinic\": \"Bethel Health Center\",\n    \"contactNumber\": \"+251 91 100 2233\",\n    \"department\": \"Internal Medicine\"\n  },\n  \"items\": [\n    {\n      \"drugCode\": \"EFDA-MED-001\",\n      \"genericName\": \"Amoxicillin\",\n      \"dosageForm\": \"Capsule\",\n      \"strength\": \"500mg\",\n      \"doseQuantity\": 500,\n      \"doseUnit\": \"mg\",\n      \"frequency\": \"TID - 3 times daily\",\n      \"frequencyPerDay\": 3,\n      \"route\": \"Oral\",\n      \"durationDays\": 7,\n      \"prescribedQuantity\": 21\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/prescriptions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "prescriptions"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Prescription captured & verified clean', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.data.status).to.eql('CLINICALLY_APPROVED');",
+                  "    pm.expect(json.data.clinicalRiskScore).to.be.below(0.2);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validate Prescription Expired Boundary (ES 7084:2024 > 15 days)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": \"{{samplePatientId}}\",\n  \"prescriptionType\": \"Acute\",\n  \"dateIssued\": \"2026-08-01T00:00:00.000Z\",\n  \"prescriber\": {\n    \"fullName\": \"Dr. Senait Bekele\",\n    \"licenseNumber\": \"ETH-MD-10924\",\n    \"facilityClinic\": \"Bethel Health Center\"\n  },\n  \"items\": [\n    {\n      \"drugCode\": \"EFDA-MED-001\",\n      \"genericName\": \"Amoxicillin\",\n      \"dosageForm\": \"Capsule\",\n      \"strength\": \"500mg\",\n      \"doseQuantity\": 500,\n      \"durationDays\": 5,\n      \"prescribedQuantity\": 15\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/prescriptions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "prescriptions"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Rejects expired script under ES 7084:2024', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Verification Engine & Clinical Override (UC02, UC03, DEF-02)",
+      "item": [
+        {
+          "name": "Run Clinical Safety Verification (PQR1 < 1.5s)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/verification/{{samplePrescriptionId}}/run",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "verification", "{{samplePrescriptionId}}", "run"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Clinical verification meets PQR1 benchmark (<1500ms)', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.verificationReport.executionLatencyMs).to.be.below(1500);",
+                  "    pm.expect(json.verificationReport.benchmarkSatisfied).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Clinical Alert Override - Valid (15+ Char Notes & PIN)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"justificationCode\": \"DOSE_TITRATED_BY_PRESCRIBER\",\n  \"clinicalNotes\": \"Prescriber confirmed statin dose titrated down to mitigate interaction risk.\",\n  \"pin\": \"{{pin}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/verification/override/{{sampleAlertId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "verification", "override", "{{sampleAlertId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Override successfully accepted with audit link (DEF-02)', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.overrideLog.pinVerified).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Clinical Alert Override - Rejected on Short Notes (<15 chars)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"justificationCode\": \"BENEFIT_OUTWEIGHS_RISK\",\n  \"clinicalNotes\": \"too short\",\n  \"pin\": \"{{pin}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/verification/override/{{sampleAlertId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "verification", "override", "{{sampleAlertId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Enforces >= 15 char clinical rationale rule', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Inventory, FEFO & Expiry Rules (UC04, FR07, FR08)",
+      "item": [
+        {
+          "name": "Get Inventory Batches (FEFO Sorted)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventory/batches?sortBy=expiry",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "inventory", "batches"],
+              "query": [{ "key": "sortBy", "value": "expiry" }]
+            }
+          }
+        },
+        {
+          "name": "Check Stock & Reserve via FEFO (UC04)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/dispense/{{samplePrescriptionId}}/stage-fefo",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dispense", "{{samplePrescriptionId}}", "stage-fefo"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Dispensing & Barcode Validation (UC05, FR09, FR10, FR12)",
+      "item": [
+        {
+          "name": "Optical Barcode Scan - Match 100% (Paracetamol Syrup)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"barcode\": \"01003123456789011727091510BATCH01\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/dispense/{{samplePrescriptionId}}/items/{{sampleItemId}}/scan-barcode",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dispense", "{{samplePrescriptionId}}", "items", "{{sampleItemId}}", "scan-barcode"]
+            }
+          }
+        },
+        {
+          "name": "Optical Barcode Scan - Mismatch Exception (Metformin 850mg vs 500mg)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"barcode\": \"01003123456789011727091510MET850\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/dispense/{{samplePrescriptionId}}/items/{{sampleItemId}}/scan-barcode",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dispense", "{{samplePrescriptionId}}", "items", "{{sampleItemId}}", "scan-barcode"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Detects dosage strength mismatch and returns 422 with audioVisualAlert', function () {",
+                  "    pm.response.to.have.status(422);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.audioVisualAlert).to.be.true;",
+                  "    pm.expect(json.errorCode).to.eql('STRENGTH_MISMATCH');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Finalize Dispensing & Print Bilingual ES 7084:2024 Labels",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/dispense/{{samplePrescriptionId}}/finalize",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dispense", "{{samplePrescriptionId}}", "finalize"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Regulatory, Audit & EFDA Sync (UC06, FR14, US-PA-01)",
+      "item": [
+        {
+          "name": "Synchronize with EFDA National Formulary (UC06)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/regulatory/sync",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "regulatory", "sync"]
+            }
+          }
+        },
+        {
+          "name": "Get Audit Trail Logs (Immutable)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/audit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "audit"]
+            }
+          }
+        },
+        {
+          "name": "Get Clinical Override Audit Logs (US-PA-01)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/audit/overrides",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "audit", "overrides"]
+            }
+          }
+        },
+        {
+          "name": "Export Audit Log as CSV (US-PA-01)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/audit/export?format=csv",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "audit", "export"],
+              "query": [{ "key": "format", "value": "csv" }]
+            }
+          }
+        },
+        {
+          "name": "EFDA Controlled Substance & Narcotics Register (FR14)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/audit/controlled-substances",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "audit", "controlled-substances"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. HL7 FHIR Interoperability (Section 4.7 External Interface)",
+      "item": [
+        {
+          "name": "Ingest HL7 FHIR R4 MedicationRequest",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resourceType\": \"MedicationRequest\",\n  \"id\": \"medrx-ext-9921\",\n  \"status\": \"active\",\n  \"intent\": \"order\",\n  \"authoredOn\": \"2026-09-28T09:00:00Z\",\n  \"subject\": {\n    \"reference\": \"Patient/PAT-2026-101\",\n    \"display\": \"Yared Tadesse\"\n  },\n  \"requester\": {\n    \"display\": \"Dr. Senait Bekele\",\n    \"identifier\": { \"value\": \"ETH-MD-10924\" }\n  },\n  \"medicationCodeableConcept\": {\n    \"coding\": [\n      {\n        \"system\": \"http://efda.gov.et/formulary\",\n        \"code\": \"EFDA-MED-001\",\n        \"display\": \"Amoxicillin\"\n      }\n    ]\n  },\n  \"dosageInstruction\": [\n    {\n      \"text\": \"TID - 3 times daily\",\n      \"doseAndRate\": [\n        {\n          \"doseQuantity\": { \"value\": 500, \"unit\": \"mg\" }\n        }\n      ]\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/fhir/R4/MedicationRequest",
+              "host": ["{{baseUrl}}"],
+              "path": ["fhir", "R4", "MedicationRequest"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('FHIR MedicationRequest ingested successfully', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.resourceType).to.eql('MedicationRequest');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
